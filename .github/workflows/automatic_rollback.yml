@@ -1,0 +1,17 @@
+name: Automatic Rollback Heroku Deployment
+
+on:
+  repository_dispatch:
+    types: [rollback]
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Rollback Heroku Release
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          heroku releases:rollback ${{ github.event.client_payload.release }} --app ${{ secrets.HEROKU_APP_NAME }}

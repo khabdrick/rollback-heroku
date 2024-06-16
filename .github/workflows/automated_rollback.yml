@@ -1,0 +1,40 @@
+name: Rollback Heroku Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install Heroku CLI
+        run: curl https://cli-assets.heroku.com/install.sh | sh
+
+      - name: Install jq
+        run: sudo apt-get install jq
+
+      - name: Fetch Previous Heroku Release
+        id: fetch_release
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          releases=$(heroku releases --json --app ${{ secrets.HEROKU_APP_NAME }} | jq -r '.[] | select(.description | contains("Deploy")) | .version')
+          previous_release=$(echo $releases | awk '{print $(NF-1)}')
+          echo "::set-output name=previous_release::v$previous_release"
+
+      - name: Rollback Heroku Release
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        run: |
+          heroku releases:rollback ${{ steps.fetch_release.outputs.previous_release }} --app ${{ secrets.HEROKU_APP_NAME }}
